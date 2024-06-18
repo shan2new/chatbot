@@ -42,14 +42,31 @@ def scrape_data():
             specialty_page.raise_for_status()
             specialty_soup = BeautifulSoup(specialty_page.content, "html.parser")
 
-            title = specialty_soup.find("h1").get_text(strip=True)
-            description = ' '.join(p.get_text(strip=True) for p in specialty_soup.find_all("p"))
-            embedding = generate_embedding(f"{title} {description}")
+            title = specialty_soup.select_one(".specialities-banner h1").get_text(strip=True)
+            content_section = specialty_soup.select_one(".specialities-main .question")
+            
+            paragraphs = content_section.find_all(['p', 'h4', 'ul'])
+            content = []
+            current_header = ""
+            for element in paragraphs:
+                if element.name == 'h4':
+                    current_header = element.get_text(strip=True)
+                elif element.name == 'p':
+                    content.append((current_header, element.get_text(strip=True)))
+                elif element.name == 'ul':
+                    list_items = [li.get_text(strip=True) for li in element.find_all('li')]
+                    content.append((current_header, ', '.join(list_items)))
+
+            description = " ".join([text for header, text in content])
+            text_content = f"{title} {description}"
+            embedding = generate_embedding(text_content)
+
             specialties.append({
                 "title": title,
                 "description": description,
                 "embedding": embedding,
-                "link": f"{base_url}{link}"
+                "link": f"{base_url}{link}",
+                "text": text_content
             })
 
         collection.delete_many({})
