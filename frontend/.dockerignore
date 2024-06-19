@@ -1,0 +1,6 @@
+# .dockerignore for frontend
+.next
+.git
+.gitignore
+Dockerfile
+README.md
