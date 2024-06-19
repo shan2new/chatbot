@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, KeyboardEvent, ChangeEvent } from 'react';
 import axios from 'axios';
 import {
   Box,
@@ -15,9 +15,12 @@ import {
   ListItemAvatar,
   Avatar,
   CircularProgress,
+  TextField,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import SendIcon from '@mui/icons-material/Send';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ChatBox = styled(Paper)(({ theme }) => ({
   height: '400px',
@@ -31,14 +34,23 @@ const ChatBox = styled(Paper)(({ theme }) => ({
 const InputContainer = styled(Box)(({ theme }) => ({
   display: 'flex',
   marginTop: theme.spacing(2),
+  flexDirection: 'column',
 }));
 
-const ChatBot = () => {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [sessionId, setSessionId] = useState('default-session-id'); // you can generate a unique session ID if needed
-  const [loading, setLoading] = useState(false);
-  const chatBoxRef = useRef(null);
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+const ChatBot: React.FC = () => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState<string>('');
+  const [sessionId, setSessionId] = useState<string>('default-session-id');
+  const [accessToken, setAccessToken] = useState<string>(''); 
+  const [loading, setLoading] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(true);
+  const [showRetry, setShowRetry] = useState<boolean>(false);
+  const chatBoxRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     if (chatBoxRef.current) {
@@ -51,26 +63,63 @@ const ChatBot = () => {
     scrollToBottom();
   }, [messages, loading]);
 
-  const handleSendMessage = async () => {
-    if (!input) return;
+  const handleSendMessage = async (customInput = null) => {
+    const content = customInput || input;
+    if (!content || !accessToken) return;
 
-    const userMessage = { role: 'user', content: input };
+    const userMessage: Message = { role: 'user', content: content };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setInput('');
     setLoading(true);
+    setShowRetry(false);
 
     try {
-      const response = await axios.post('/api/query', {
+      const response = await axios.post('http://localhost:8000/api/query', {
         session_id: sessionId,
-        query: input,
+        query: content,
+        access_token: accessToken,
       });
 
-      const botMessage = { role: 'assistant', content: response.data.answer };
+      const botMessage: Message = { role: 'assistant', content: response.data.answer };
       setMessages((prevMessages) => [...prevMessages, botMessage]);
       setLoading(false);
     } catch (error) {
       console.error('Error sending message:', error);
+      toast.error('Something went wrong, please try again later.');
       setLoading(false);
+      setShowRetry(true);
+    }
+  };
+
+  const handleKeyPressToken = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && accessToken && accessToken != '') {
+      setIsEditing(false);
+    }
+  };
+
+  const handleKeyPressMessage = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && input != '') {
+      handleSendMessage(); 
+    }
+  };
+
+  const handleAccessTokenChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const token = e.target.value;
+    setAccessToken(token);
+  };
+
+  const handleRetry = () => {
+    const lastMessage = messages.at(-1);
+    if(lastMessage) {
+      handleSendMessage(lastMessage.content);
+    }
+  }
+
+  const handleSaveClick = () => {
+    if (isEditing) {
+      setIsEditing(false);
+    } else {
+      setIsEditing(true);
     }
   };
 
@@ -79,6 +128,28 @@ const ChatBot = () => {
       <Typography variant="h4" align="center" gutterBottom>
         ChatBot
       </Typography>
+      <Box display="flex" alignItems="center" sx={{ mb: 2 }}>
+        <TextField
+          label="Access Token"
+          value={accessToken}
+          onChange={handleAccessTokenChange}
+          variant="outlined"
+          fullWidth
+          disabled={!isEditing}
+          sx={{
+            mr: 2,
+            bgcolor: isEditing ? '#fff' : '#e0e0e0',
+          }}
+          onKeyPress={handleKeyPressToken}
+        />
+        <Button
+          variant="contained"
+          color={isEditing ? "primary" : "secondary"}
+          onClick={handleSaveClick}
+        >
+          {isEditing ? 'Editing' : 'Saved'}
+        </Button>
+      </Box>
       <ChatBox ref={chatBoxRef} elevation={3}>
         <List>
           {messages.map((msg, index) => (
@@ -110,6 +181,18 @@ const ChatBot = () => {
               />
             </ListItem>
           )}
+          {showRetry && (
+            <ListItem alignItems="flex-start">
+              <ListItemText
+                primary="Error"
+                secondary={
+                  <Button variant="contained" color="error" onClick={handleRetry}>
+                    Try Again
+                  </Button>
+                }
+              />
+            </ListItem>
+          )}
           <div ref={chatBoxRef} />
         </List>
       </ChatBox>
@@ -117,7 +200,7 @@ const ChatBot = () => {
         <InputBase
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+          onKeyPress={handleKeyPressMessage}
           placeholder="Type a message..."
           fullWidth
           sx={{
@@ -126,12 +209,21 @@ const ChatBot = () => {
             border: '1px solid #ccc',
             bgcolor: '#fff',
             marginRight: 1,
+            marginBottom: 1,
           }}
+          disabled={loading}
         />
-        <Button variant="contained" color="primary" onClick={handleSendMessage} endIcon={<SendIcon />}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleSendMessage}
+          endIcon={<SendIcon />}
+          disabled={loading}
+        >
           Send
         </Button>
       </InputContainer>
+      <ToastContainer />
     </Container>
   );
 };

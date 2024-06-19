@@ -37,6 +37,7 @@ app.add_middleware(
 )
 
 class QueryRequest(BaseModel):
+    access_token: str
     session_id: str
     query: str
 
@@ -66,6 +67,12 @@ def get_chat_history(session_id):
 
 @app.post("/api/query", response_model=QueryResponse)
 async def query(request: QueryRequest):
+    if request.access_token is None or request.access_token != os.getenv('APP_ACCESS_TOKEN'):
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     vector_search = get_vector_search()
     docs = vector_search.similarity_search(request.query, k=1)
     if not docs:
