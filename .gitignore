@@ -1,3 +1,5 @@
 venv
 .env
+terraform.tfstate
 terraform.tfvars
+.terraform.tfstate.lock.info
