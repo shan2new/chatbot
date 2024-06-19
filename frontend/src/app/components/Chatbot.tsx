@@ -74,7 +74,7 @@ const ChatBot: React.FC = () => {
     setShowRetry(false);
 
     try {
-      const response = await axios.post('http://localhost:8000/api/query', {
+      const response = await axios.post('/api/query', {
         session_id: sessionId,
         query: content,
         access_token: accessToken,
