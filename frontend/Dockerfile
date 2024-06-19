@@ -1,5 +1,6 @@
 # frontend/Dockerfile
-FROM node:18
+# Stage 1: Build
+FROM node:18 AS builder
 
 # Create app directory
 WORKDIR /usr/src/app
@@ -14,6 +15,17 @@ COPY . .
 # Build the app
 RUN npm run build
 
+# Stage 2: Production
+FROM node:18
+
+# Create app directory
+WORKDIR /usr/src/app
+
+# Copy built files from builder stage
+COPY --from=builder /usr/src/app .
+
+# Install only production dependencies
+RUN npm install --only=production
 
 # Expose the port
 EXPOSE 3000
