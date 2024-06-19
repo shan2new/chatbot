@@ -60,7 +60,7 @@ const ChatBot = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:8000/query', {
+      const response = await axios.post('/api/query', {
         session_id: sessionId,
         query: input,
       });

@@ -64,7 +64,7 @@ def get_chat_history(session_id):
     chat_history = [{"role": message["role"], "content": message["content"]} for message in messages]
     return chat_history
 
-@app.post("/query", response_model=QueryResponse)
+@app.post("/api/query", response_model=QueryResponse)
 async def query(request: QueryRequest):
     vector_search = get_vector_search()
     docs = vector_search.similarity_search(request.query, k=1)
@@ -93,6 +93,14 @@ async def query(request: QueryRequest):
 
     # pdb.set_trace()
     return QueryResponse(answer=assistant_message)
+
+@app.get("/api")
+async def health():
+    return 'Healthy!'
+
+@app.get("/")
+async def health():
+    return 'Healthy!'
 
 if __name__ == "__main__":
     import uvicorn
