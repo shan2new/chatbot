@@ -46,29 +46,54 @@ const ChatBot: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>('');
   const [sessionId, setSessionId] = useState<string>('default-session-id');
-  const [accessToken, setAccessToken] = useState<string>(''); 
+  const [accessToken, setAccessToken] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(true);
   const [showRetry, setShowRetry] = useState<boolean>(false);
+  const [displayResponse, setDisplayResponse] = useState<string>('');
   const chatBoxRef = useRef<HTMLDivElement>(null);
+  const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
     if (chatBoxRef.current) {
       chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
-      console.log("Scrolled to bottom");
     }
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, loading]);
+  }, [messages, displayResponse]);
+
+  useEffect(() => {
+    if (displayResponse) {
+      const botMessageIndex = messages.length - 1;
+      setMessages((prevMessages) => {
+        const newMessages = [...prevMessages];
+        newMessages[botMessageIndex] = {
+          ...newMessages[botMessageIndex],
+          content: displayResponse,
+        };
+        return newMessages;
+      });
+    }
+  }, [displayResponse]);
+
+  useEffect(() => {
+    return () => {
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+      }
+    };
+  }, []);
 
   const handleSendMessage = async (customInput = null) => {
     const content = customInput || input;
     if (!content || !accessToken) return;
 
     const userMessage: Message = { role: 'user', content: content };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
+    const botMessage: Message = { role: 'assistant', content: '' };
+
+    setMessages((prevMessages) => [...prevMessages, userMessage, botMessage]);
     setInput('');
     setLoading(true);
     setShowRetry(false);
@@ -79,10 +104,8 @@ const ChatBot: React.FC = () => {
         query: content,
         access_token: accessToken,
       });
-
-      const botMessage: Message = { role: 'assistant', content: response.data.answer };
-      setMessages((prevMessages) => [...prevMessages, botMessage]);
       setLoading(false);
+      typeResponse(response.data.answer);
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Something went wrong, please try again later.');
@@ -91,15 +114,28 @@ const ChatBot: React.FC = () => {
     }
   };
 
+  const typeResponse = (text: string) => {
+    let i = 0;
+    typingIntervalRef.current = setInterval(() => {
+      setDisplayResponse(text.slice(0, i + 1));
+      i++;
+      if (i >= text.length) {
+        if (typingIntervalRef.current) {
+          clearInterval(typingIntervalRef.current);
+        }
+      }
+    }, 20);
+  };
+
   const handleKeyPressToken = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && accessToken && accessToken != '') {
+    if (e.key === 'Enter' && accessToken && accessToken !== '') {
       setIsEditing(false);
     }
   };
 
   const handleKeyPressMessage = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && input != '') {
-      handleSendMessage(); 
+    if (e.key === 'Enter' && input !== '') {
+      handleSendMessage();
     }
   };
 
@@ -110,17 +146,27 @@ const ChatBot: React.FC = () => {
 
   const handleRetry = () => {
     const lastMessage = messages.at(-1);
-    if(lastMessage) {
+    if (lastMessage) {
       handleSendMessage(lastMessage.content);
     }
-  }
+  };
 
   const handleSaveClick = () => {
-    if (isEditing) {
-      setIsEditing(false);
-    } else {
-      setIsEditing(true);
+    setIsEditing(!isEditing);
+  };
+
+  const getLatestBotResponseText = (msg: Message, index: number, allMessages: Message[]) => {
+    if (index === allMessages.length - 1 && loading) {
+      return (
+        <Box display="flex" alignItems="left">
+          <CircularProgress size={20} />
+          <Typography variant="body2" marginLeft={1}>
+            AI Bot is thinking... 🤔
+          </Typography>
+        </Box>
+      );
     }
+    return <Typography variant="body2">{msg.content}</Typography>;
   };
 
   return (
@@ -144,43 +190,26 @@ const ChatBot: React.FC = () => {
         />
         <Button
           variant="contained"
-          color={isEditing ? "primary" : "secondary"}
+          color={isEditing ? 'primary' : 'secondary'}
           onClick={handleSaveClick}
+          size={'large'}
         >
-          {isEditing ? 'Editing' : 'Saved'}
+          {isEditing ? 'Save' : 'Edit'}
         </Button>
       </Box>
       <ChatBox ref={chatBoxRef} elevation={3}>
         <List>
-          {messages.map((msg, index) => (
+          {messages.map((msg, index, allMessages) => (
             <ListItem key={index} alignItems="flex-start">
               <ListItemAvatar>
                 <Avatar>{msg.role === 'user' ? 'U' : 'B'}</Avatar>
               </ListItemAvatar>
               <ListItemText
                 primary={msg.role === 'user' ? 'You' : 'Bot'}
-                secondary={<Typography variant="body2">{msg.content}</Typography>}
+                secondary={getLatestBotResponseText(msg, index, allMessages)}
               />
             </ListItem>
           ))}
-          {loading && (
-            <ListItem alignItems="flex-start">
-              <ListItemAvatar>
-                <Avatar>B</Avatar>
-              </ListItemAvatar>
-              <ListItemText
-                primary="Bot"
-                secondary={
-                  <Box display="flex" alignItems="center">
-                    <CircularProgress size={20} />
-                    <Typography variant="body2" marginLeft={1}>
-                      Bot is typing...
-                    </Typography>
-                  </Box>
-                }
-              />
-            </ListItem>
-          )}
           {showRetry && (
             <ListItem alignItems="flex-start">
               <ListItemText
@@ -216,7 +245,7 @@ const ChatBot: React.FC = () => {
         <Button
           variant="contained"
           color="primary"
-          onClick={handleSendMessage}
+          onClick={() => handleSendMessage()}
           endIcon={<SendIcon />}
           disabled={loading}
         >
