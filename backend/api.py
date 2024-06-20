@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from pymongo import MongoClient, ASCENDING
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_openai import OpenAIEmbeddings
-from openai import OpenAI, error
+from openai import OpenAI
 from dotenv import load_dotenv
 import logging
 
@@ -108,7 +108,7 @@ async def query(request: QueryRequest):
 
         assistant_message = response.choices[0].message.content.strip()
 
-    except error.OpenAIError as e:
+    except error as e:
         logger.error("OpenAI API request failed: %s", e)
         raise HTTPException(status_code=500, detail="An error occurred while processing your request. Please try again later.")
 
