@@ -108,7 +108,7 @@ async def query(request: QueryRequest):
 
         assistant_message = response.choices[0].message.content.strip()
 
-    except error as e:
+    except Exception as e:
         logger.error("OpenAI API request failed: %s", e)
         raise HTTPException(status_code=500, detail="An error occurred while processing your request. Please try again later.")
 
