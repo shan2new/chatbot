@@ -1,13 +1,21 @@
 Technologies Used:
 
 Backend: FastAPI/Python
+
 Frontend: NextJS/Typescript
+
 Containerization: Docker
+
 Cloud Provider: AWS Elastic Container Services
+
 DNS: Godaddy
+
 Infrastructure as Code: Terraform
+
 Database: MongoDB (Atlas)
+
 LLM: OpenAI GPT-4 API for text search and completions
+
 Persistent Memory: App remembers your conversations on reload and previous conversations
 
 Deployment URL: https://chatbot.thirdarm.in (An access token is required to access this)
