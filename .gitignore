@@ -3,3 +3,6 @@ venv
 terraform.tfstate
 terraform.tfvars
 .terraform.tfstate.lock.info
+terraform.tfstate.backup
+terraform-provider-aws*
+
