@@ -8,8 +8,6 @@ Containerization: Docker
 
 Cloud Provider: AWS Elastic Container Services
 
-DNS: Godaddy
-
 Infrastructure as Code: Terraform
 
 Database: MongoDB (Atlas)
