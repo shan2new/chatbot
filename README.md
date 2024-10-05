@@ -16,8 +16,6 @@ LLM: OpenAI GPT-4 API for text search and completions
 
 Persistent Memory: App remembers your conversations on reload and previous conversations
 
-Deployment URL: https://chatbot.thirdarm.in (An access token is required to access this)
-
 Additional Info:
 
 1. AWS Elastic Container Service Integration: Completely hosted via AWS ECS with fargate implementation
